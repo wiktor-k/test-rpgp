@@ -1,12 +1,11 @@
 const DATA: &[u8] = b"Hello World";
-use std::io::Cursor;
-use std::io::Write;
 
 use card_backend_pcsc::PcscBackend;
 use openpgp_card::Card;
 use pgp::crypto::{hash::HashAlgorithm, public_key::PublicKeyAlgorithm};
 use pgp::packet::{self, SignatureConfig};
 use pgp::types::{self, KeyId, KeyTrait, Mpi, PublicKeyTrait, SecretKeyTrait};
+use pgp::StandaloneSignature;
 use unimpl::unimpl;
 
 #[derive(Debug)]
@@ -105,13 +104,9 @@ fn main() -> testresult::TestResult {
     );
     let signature = signature.sign(&CardSigner, String::new, DATA)?;
 
-    let mut signature_bytes = Vec::with_capacity(1024);
-    let mut buff = Cursor::new(&mut signature_bytes);
-    packet::write_packet(&mut buff, &signature).expect("Write must succeed");
-
-    std::fs::File::create("sig.pgp")
-        .unwrap()
-        .write_all(&signature_bytes)
+    let signature = StandaloneSignature { signature };
+    signature
+        .to_armored_writer(&mut std::fs::File::create("sig.asc").unwrap(), None)
         .unwrap();
     Ok(())
 }
